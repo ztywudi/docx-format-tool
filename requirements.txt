@@ -1,0 +1,12 @@
+# 底稿整理助手 -  requirements.txt
+# Python 版本要求：3.8+
+
+# Word 文档处理核心库
+python-docx>=0.8.11
+
+# GUI 库（Python 内置，无需安装）
+# tkinter
+
+# 其他依赖（自动安装）
+# requests（如果需要联网功能）
+# pillow（如果需要图片处理）
