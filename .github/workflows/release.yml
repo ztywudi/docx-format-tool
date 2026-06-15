@@ -1,56 +1,123 @@
 # GitHub Actions 自动发布配置
-# 当用户推送 tag 时，自动创建 Release
+# 推送 tag 时触发：自动打包 Windows exe + Python 包，创建 Release 并上传
 
-name: 创建 Release
+name: 发布底稿整理助手
 
 on:
   push:
     tags:
-      - 'v*'  # 推送 v1.0.0 这样的 tag 时触发
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    
+  # ---------- 打包 Windows exe ----------
+  build-windows-exe:
+    runs-on: windows-latest
+
     steps:
-    - name: 检出代码
-      uses: actions/checkout@v3
-    
-    - name: 创建 Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: 底稿整理助手 ${{ github.ref }}
-        body: |
-          ## 底稿整理助手 ${{ github.ref }}
-          
-          ### 功能特点
-          - 纯本地运行，无需联网
-          - 支持模板导入/管理/应用
-          - 一键调整报告格式
-          - 自动备份原文件
-          
-          ### 安装与使用
-          
-          #### 方法1：下载源代码使用
-          1. 下载源代码（Source code）
-          2. 安装依赖：`pip install -r requirements.txt`
-          3. 运行：`python format_tool.py`
-          
-          #### 方法2：安装 Python 包
-          1. 下载 `docx_format_tool-*.whl` 或 `docx-format-tool-*.tar.gz`
-          2. 安装：`pip install docx_format_tool-*.whl`
-          3. 运行：`format-tool`
-          
-          #### 方法3：Windows 用户（需要自己打包 exe）
-          1. 安装 Python 和依赖
-          2. 运行：`pyinstaller --onefile --windowed format_tool.py`
-          3. 在 dist 目录找到 exe 文件
-          
-          ### 更新日志
-          - 初始版本发布
-        draft: false
-        prerelease: false
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: PyInstaller 打包
+        run: |
+          pyinstaller --onefile --windowed --name "底稿整理助手" --hidden-import=tkinter --hidden-import=tkinter.filedialog --hidden-import=tkinter.messagebox format_tool.py
+
+      - name: 上传 exe 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/底稿整理助手.exe
+
+  # ---------- 打包 Python 源码包 ----------
+  build-python-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装打包工具
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+
+      - name: 构建 Python 包
+        run: python setup.py sdist bdist_wheel
+
+      - name: 上传 Python 包产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/
+
+  # ---------- 创建 Release 并上传所有产物 ----------
+  create-release:
+    needs: [build-windows-exe, build-python-package]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 下载所有构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: 查看产物结构
+        run: find artifacts/ -type f | head -20
+
+      - name: 创建 Release 并上传
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 底稿整理助手 ${{ github.ref_name }}
+          body: |
+            ## 底稿整理助手 ${{ github.ref_name }}
+
+            ### 下载与使用
+
+            #### Windows 用户（推荐）
+            1. 下载 **底稿整理助手.exe**
+            2. 双击运行即可，无需安装 Python
+
+            #### Mac / Linux 用户
+            1. 下载 Python 包（`.whl` 或 `.tar.gz`）
+            2. 安装：`pip install docx_format_tool-*.whl`
+            3. 运行：`format-tool`
+
+            #### 从源代码运行
+            ```bash
+            git clone https://github.com/ztywudi/docx-format-tool.git
+            cd docx-format-tool
+            pip install -r requirements.txt
+            python format_tool.py
+            ```
+
+            ### 功能特点
+            - 纯本地运行，无需联网
+            - 支持模板导入 / 管理 / 应用
+            - 一键调整报告格式（封面、标题、正文、表格、图片、页眉页脚、目录、落款）
+            - 应用前自动备份原文件
+
+            ### 更新日志
+            详见 commit 记录
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/windows-exe/底稿整理助手.exe
+            artifacts/python-package/docx_format_tool-*.tar.gz
+            artifacts/python-package/docx_format_tool-*.whl

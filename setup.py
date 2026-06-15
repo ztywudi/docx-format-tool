@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-底稿整理助手 v1.0 - setup.py
+底稿整理助手 v1.1.0 - setup.py
 用于打包成可执行文件
 """
 
@@ -12,7 +12,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="docx-format-tool",
-    version="1.0.0",
+    version="1.1.0",
     author="ztywudi",
     author_email="ztyAI@hotmail.com",
     description="底稿整理助手 - Word 报告格式调整工具",
