@@ -33,7 +33,11 @@ jobs:
 
       - name: PyInstaller 打包
         run: |
-          pyinstaller --onefile --windowed --name "底稿整理助手" --hidden-import=tkinter --hidden-import=tkinter.filedialog --hidden-import=tkinter.messagebox format_tool.py
+          pyinstaller --onefile --windowed --name "FormatTool" --hidden-import=tkinter --hidden-import=tkinter.filedialog --hidden-import=tkinter.messagebox format_tool.py
+
+      - name: 重命名 exe
+        run: |
+          Rename-Item -Path "dist\FormatTool.exe" -NewName "底稿整理助手.exe"
 
       - name: 上传 exe 产物
         uses: actions/upload-artifact@v4
